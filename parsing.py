@@ -337,6 +337,12 @@ def extract_course_option(option_str: str) -> str:
     match = re.search(r"코스.?옵션.*?:\s*(.*)$", option_str)
     if match:
         return match.group(1).strip()
+    match = re.search(r"옵션.?선택.*?:\s*(.*)$", option_str)
+    if match:
+        return match.group(1).strip()
+    match = re.search(r"차량.?옵션.*?:\s*(.*)$", option_str)
+    if match:
+        return match.group(1).strip()
     return ""
 
 def parse_category_and_quantity(category_str: str, quantity: int) -> tuple[int, int, int]:
