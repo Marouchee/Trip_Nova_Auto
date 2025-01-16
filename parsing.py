@@ -1,61 +1,5 @@
 import re
 
-def parse_product_option(product_option_str: str) -> dict:
-    """
-    product_option_str 예:
-      "이용날짜(예시 : 2024-xx-xx ): 2025-02-15 / 숙소 이름( 예시 : 베스트 웨스턴 푸꾸옥): 비다 로카 푸꾸옥 리조트
-       / 구분 (성인/소아): 성인 (키 140cm 이상) / 결제방식 (잔금/완납): 완납
-       / 코스옵션 (기본/키스오브더씨 공연): B코스 (키스오브더씨 티켓 포함)"
-
-    필요한 항목:
-      - 이용 날짜
-      - 숙소 이름(픽업장소)
-      - 구분(성인/아동/노인)
-      - 결제방식
-      - 코스 옵션
-    """
-
-    # 결과를 담을 딕셔너리
-    result = {
-        "useDate": "",
-        "hotelName": "",
-        "category": "",        # 성인/아동/노인 등
-        "payMethod": "",       # 잔금 or 완납 등
-        "courseOption": ""
-    }
-
-    # 1) 이용날짜
-    #   예: "이용날짜(예시 : 2024-xx-xx ): 2025-02-15"
-    use_date_match = re.search(r"이용.?날짜.*?:\s*([^/]+)", product_option_str)
-    if use_date_match:
-        result["useDate"] = use_date_match.group(1).strip()
-
-    # 2) 숙소 이름(픽업장소)
-    #   예: "숙소 이름.*?: 비다 로카 푸꾸옥 리조트"
-    hotel_match = re.search(r"숙소.?이름.*?:\s*([^/]+)", product_option_str)
-    if hotel_match:
-        result["hotelName"] = hotel_match.group(1).strip()
-
-    # 3) 구분 (성인/소아/노인 등)
-    #   예: "구분.*?: 성인 (키 140cm 이상)"
-    category_match = re.search(r"구분.*?:\s*([^/]+)", product_option_str)
-    if category_match:
-        result["category"] = category_match.group(1).strip()
-
-    # 4) 결제방식 (잔금/완납)
-    pay_method_match = re.search(r"결제.?방식.*?:\s*([^/]+)", product_option_str)
-    if pay_method_match:
-        result["payMethod"] = pay_method_match.group(1).strip()
-
-    # 5) 코스옵션 (기본/키스오브더씨 공연 등)
-    course_option_match = re.search(r"코스.?옵션.*?:\s*(.*)$", product_option_str)
-    if course_option_match:
-        # 여기선 정규식 뒤쪽에 /가 없을 수도 있으니, 끝까지 잡도록
-        result["courseOption"] = course_option_match.group(1).strip()
-
-    return result
-
-
 def parse_orders(detail_res: dict) -> list[dict]:
     """
     detail_res 구조:
@@ -133,6 +77,12 @@ def parse_orders(detail_res: dict) -> list[dict]:
 
         # 8) 메인 옵션 파싱
         course_option_str = extract_course_option(use_date_str)
+        # 8-1) 메인 옵션이 2가지인 상품의 경우 side_option에 파싱
+        if product_name == "[푸꾸옥 에센셜] 프라이빗 모닝투어 체크인 비엣젯, 제주항공, 진에어, 대한항공":
+            side_option = extract_course_option_2(use_date_str)
+
+        # 9) 비행기 편명 파싱
+        airplane = extract_plane(use_date_str)
 
         # packageNumber - 채널 상품 번호? (병합용 식별자)
         productId = po.get("productId", None)  # 예: "2025010825643147"
@@ -144,7 +94,8 @@ def parse_orders(detail_res: dict) -> list[dict]:
         side_option = None
         is_side = False
         # 예시판별: 만약 productName에 "스피드보트 업그레이드" or "북부지역" 텍스트 포함되어 있으면 side_option = productName
-        if any(x in product_name for x in ["스피드보트 업그레이드", "북부지역", "잔금 30USD", "잔금 20USD"]):
+        if any(x in product_name for x in ["스피드보트 업그레이드", "북부지역", "잔금 30USD", "잔금 20USD",
+                                           "북부(완납)", "남부(완납)", "중부(완납)", "소나시(무료)", "북부(잔금)", "남부(잔금)", "중부(잔금)" ]):
             is_side = True
             side_option = product_name  # sideOption 필드에 저장
         # 혹은 productOption 안에서도 판별 가능
@@ -167,7 +118,7 @@ def parse_orders(detail_res: dict) -> list[dict]:
             # 일반 메인 상품은 quantity로 adult/child/old
             adult, child, old = parse_category_and_quantity(category_str, quantity)
 
-        # 9) items에 누적
+        # 10) items에 누적
         items.append({
             "orderId": order_id,
             "productId": productId,
@@ -182,7 +133,8 @@ def parse_orders(detail_res: dict) -> list[dict]:
             "child": child,
             "old": old,
             "sideOption": side_option,
-            "tower": tower
+            "tower": tower,
+            "airplane": airplane
         })
 
     # 이제 items를 orderId별로 합산
@@ -223,6 +175,7 @@ def _combine_by_pkg(items: list[dict]) -> list[dict]:
                 "child": it["child"],
                 "old": it["old"],
                 "tower": it["tower"],
+                "airplane": it["airplane"],
                 "sideOption1": "",
                 "sideOption2": "",
             }
@@ -334,15 +287,46 @@ def extract_course_option(option_str: str) -> str:
         -> "B코스 (사파리+빈원더스+그랜드월드)"
     (정규식 or split)
     """
-    match = re.search(r"코스.?옵션.*?:\s*(.*)$", option_str)
+    match = re.search(r"코스.?옵션.*?:\s*([^/]+)", option_str)
     if match:
         return match.group(1).strip()
-    match = re.search(r"옵션.?선택.*?:\s*(.*)$", option_str)
+    match = re.search(r"옵션.?선택.*?:\s*([^/]+)", option_str)
     if match:
         return match.group(1).strip()
-    match = re.search(r"차량.?옵션.*?:\s*(.*)$", option_str)
+    match = re.search(r"차량.?옵션.*?:\s*([^/]+)", option_str)
     if match:
         return match.group(1).strip()
+    match = re.search(r"투어.?선택.*?:\s*([^/]+)", option_str)
+    if match:
+        return match.group(1).strip()
+    return ""
+
+# 상품에 메인옵션이 2가지 있는경우에 사용.
+def extract_course_option_2(option_str: str) -> str:
+    """
+    예: "코스 옵션 (기본/빈원더스 추가): B코스 (사파리+빈원더스+그랜드월드)"
+        -> "B코스 (사파리+빈원더스+그랜드월드)"
+    (정규식 or split)
+    """
+    match = re.search(r"마사지.?시간.?선택.*?:\s*([^/]+)", option_str)
+    if match:
+        return match.group(1).strip()
+    return ""
+
+def extract_plane(option_str: str) -> str:
+    """
+    예: " 비행기 편명(예시: VJ979): VJ0975"
+        -> "VJ0975"
+    (정규식 or split)
+    """
+    match = re.search(r"비행기.?편명.*?:\s*([^/]+)", option_str)
+    if match:
+        parts = match.group(1).split("):")
+        if len(parts) > 1:
+            # parts[1]은 " 뉴월드 리조트"처럼 앞에 공백이 있을 수 있으니 strip()
+            return parts[1].strip()
+        else:
+            return match.group(1).strip()
     return ""
 
 def parse_category_and_quantity(category_str: str, quantity: int) -> tuple[int, int, int]:
