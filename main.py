@@ -56,7 +56,7 @@ if __name__ == "__main__":
     # 스프레드시트에 업로드
     # 1) 스프레드시트 ID & JSON 키 파일 설정
     SHEET_ID = "####################################"
-    SERVICE_ACCOUNT_FILE = "######################################.json"
+    SERVICE_ACCOUNT_FILE = "######################################"
 
     # 2) 테스트용 밸류
     test_values = sheet_rows
@@ -81,4 +81,68 @@ if __name__ == "__main__":
     for row in read_result:
         print(row)
 
-    # 5) DB 저장 구현 예정
+    # 5) DB 저장
+    # 1) DB 연결
+    connection = pymysql.connect(
+        host="###############",
+        user="#############",
+        password="##########",
+        database="###################",
+        charset="utf8"
+    )
+
+    data_list = detail_res.get("data", [])
+
+    for elem in data_list:
+        po = elem.get("productOrder", {})
+        order_info = po.get("order", {})
+        shipping = po.get("shippingAddress", {})
+
+        # (A) orders 테이블 저장
+        order_data = {
+            "orderId": order_info.get("orderId", ""),
+            "orderDate": order_info.get("orderDate", ""),  # "2025-01-07T20:49:12.0+09:00" -> 필요시 문자열 파싱
+            "ordererId": order_info.get("ordererId", ""),
+            "ordererName": order_info.get("ordererName", ""),
+            "ordererTel": order_info.get("ordererTel", ""),
+            "payLocationType": order_info.get("payLocationType", "")
+        }
+        save_order_to_db(connection, order_data)
+
+        # (B) product_orders 테이블 저장
+        product_order_data = {
+            "productOrderId": po.get("productOrderId", ""),
+            "orderId": order_info.get("orderId", ""),
+            "productName": po.get("productName", ""),
+            "productOption": po.get("productOption", ""),
+            "quantity": po.get("quantity", 0),
+            "freeGift": po.get("freeGift", ""),
+            "productClass": po.get("productClass", ""),
+            "optionCode": po.get("optionCode", ""),
+            "optionPrice": po.get("optionPrice", 0),
+            "unitPrice": po.get("unitPrice", 0),
+            "initialPaymentAmount": po.get("initialPaymentAmount", 0),
+            "remainPaymentAmount": po.get("remainPaymentAmount", 0),
+            "initialProductAmount": po.get("initialProductAmount", 0),
+            "remainProductAmount": po.get("remainProductAmount", 0),
+            "merchantChannelId": po.get("merchantChannelId", ""),
+            "sellerProductCode": po.get("sellerProductCode", "")
+        }
+        save_product_order_to_db(connection, product_order_data)
+
+        # (C) shipping_address 테이블 저장
+        shipping_data = {
+            "productOrderId": po.get("productOrderId", ""),
+            "name": shipping.get("name", ""),
+            "baseAddress": shipping.get("baseAddress", ""),
+            "detailedAddress": shipping.get("detailedAddress", ""),
+            "tel1": shipping.get("tel1", ""),
+            "tel2": shipping.get("tel2", ""),
+            "city": shipping.get("city", ""),
+            "state": shipping.get("state", ""),
+            "country": shipping.get("country", ""),
+            "zipCode": shipping.get("zipCode", "")
+        }
+        save_shipping_address_to_db(connection, shipping_data)
+
+    connection.close()
