@@ -1,4 +1,3 @@
-import re
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
@@ -52,75 +51,6 @@ def read_sheet(sheet_id, range_name, service_account_file):
     return rows
 
 
-def parse_hotel_name(raw_str: str) -> str:
-    """
-    예)
-      "미아 리조트 ): 인터콘티넨탈 나트랑"  -> "인터콘티넨탈 나트랑"
-      "베스트 웨스턴 푸꾸옥): 뉴월드 리조트" -> "뉴월드 리조트"
-      "베스트 웨스턴 푸꾸옥 ): 솔바이멜리아" -> "솔바이멜리아"
-      "로얄 펠리스 호텔): 21 Phố Nam Ngư Tầng" -> "21 Phố Nam Ngư Tầng"
-
-    패턴: 괄호 + 콜론 ) : 이후에 있는 텍스트를 추출
-    """
-    # 이 정규식은 ")", " )", "):", " ):" 등에 이어지는 부분을 group(1)로 캡처
-    # 예:  "베스트 웨스턴 푸꾸옥 ): 솔바이멜리아"에서 group(1)은 "솔바이멜리아"
-    pattern = r"\)\s*:\s*(.+)$"
-    match = re.search(pattern, raw_str)
-    if match:
-        return match.group(1).strip()
-    else:
-        # 혹시 매칭이 안 된다면, 원본 반환 (또는 빈 문자열 등)
-        return raw_str.strip()
-
-
-def extract_use_date(raw_str: str) -> str:
-    """
-    ex) raw_str = "이용날짜(예시 : 2024-xx-xx ): 2025-02-15"
-        -> "2025-02-15" 만 반환
-    """
-    # 방법 A) 정규식
-    match = re.search(r":\s*([0-9]{4}-[0-9]{2}-[0-9]{2})", raw_str)
-    if match:
-        return match.group(1).strip()
-
-    # 방법 B) split 대안
-    # parts = raw_str.split("):")
-    # if len(parts) > 1:
-    #     return parts[1].strip()
-
-    return raw_str  # fallback (혹시 못 찾으면 원본 리턴)
-
-
-def parse_category_with_qty(category_str: str) -> tuple[int, int, int]:
-    """
-    category_str 예) "성인 (키 140cm 이상)(2명)" or "아동(1명)" or "노인 (3명)"
-    반환: (성인수, 아동수, 노인수)
-    """
-    # 1) 몇 명인지 숫자 파싱 (기본=1명으로 가정)
-    qty_match = re.search(r"\((\d+)명\)", category_str)
-    qty = 1
-    if qty_match:
-        qty = int(qty_match.group(1))
-
-    # 2) 성인/아동/노인 구분
-    # 소아도 아동으로 처리
-    cat_lower = category_str.lower()  # 소문자로
-    adult = 0
-    child = 0
-    old = 0
-
-    if "성인" in cat_lower:
-        adult = qty
-    elif ("아동" in cat_lower) or ("소아" in cat_lower):
-        child = qty
-    elif ("노인" in cat_lower) or ("60세이상" in cat_lower):
-        old = qty
-    else:
-        # 혹은 default: 성인으로?
-        adult = qty
-
-    return (adult, child, old)
-
 def to_spreadsheet_rows(parsed_list):
     """
     parsed_list: 파싱된 주문 목록, 각 항목은 dict로 가정
@@ -169,12 +99,15 @@ def to_spreadsheet_rows(parsed_list):
         course_option_side_1 = item.get("sideOption1", "")
         course_option_side_2 = item.get("sideOption2", "")
         tower = str(item.get("tower", 0))
+        airplane = item.get("airplane", "")
+
+        if product_name == "푸꾸옥 프라이빗 렌트카 기사포함 km무제한 SUV 미니벤":
+            pay_method = "완납"
 
         # 2) 영문명등 쓰지않는 칸들 비워두기 / 추후에 구현 예정
         eng_name = ""
         drop = ""
         pick_up_time = ""
-        airplane = ""
         use_date_1 = "" # 이용날짜 (스프레드시트 함수가 자동으로 채워주는 자리)
 
         # 3) 한 행 구성
