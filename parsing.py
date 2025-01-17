@@ -349,3 +349,99 @@ def parse_category_and_quantity(category_str: str, quantity: int) -> tuple[int, 
     else:
         # 기본적으로 성인으로 처리
         return (quantity, 0, 0)
+
+
+def parse_product_option(option_str: str) -> dict:
+    """
+    productOption에서
+    - useDate (YYYY-MM-DD)
+    - engName (영문 이름)
+    - hotelName (숙소 이름)
+    - courseOption (코스 옵션)
+    - sideOption (기존 sideOption1/2 처리?), 혹은 우리가 parse_orders에서 sideOption 로직이 있다면, 그쪽에 맡길 수도 있음
+    - adult, child, old (혹은 parse_category_and_quantity)
+    - payMethod
+    - birthDay(6자)
+    - tower(수건 개수)
+    - airplane(항공편)
+    - drop(샌드다운 장소)
+    """
+    result = {
+        "useDate": "",
+        "engName": "",
+        "hotelName": "",
+        "courseOption": "",
+        # sideOption1, sideOption2는 parse_orders 쪽에서 관리? 혹은 여기서 파싱
+        "adult": 0,
+        "child": 0,
+        "old": 0,
+        "payMethod": "",
+        "birthDay": "",
+        "tower": 0,
+        "airplane": "",
+        "drop": ""
+    }
+
+    # 예시 정규식들 (필요에 맞춰 수정)
+    # 1) 이용 날짜
+    m_usedate = re.search(r":\s*([0-9]{4}-[0-9]{2}-[0-9]{2})", option_str)
+    if m_usedate:
+        result["useDate"] = m_usedate.group(1)
+
+    # 2) 영문 이름
+    m_eng = re.search(r"영문.?이름.*?:\s*([^/]+)", option_str)
+    if m_eng:
+        result["engName"] = m_eng.group(1).strip()
+
+    # 3) 숙소 이름
+    m_hotel = re.search(r"숙소.?이름.*?:\s*([^/]+)", option_str)
+    if m_hotel:
+        result["hotelName"] = m_hotel.group(1).strip()
+
+    # 4) 코스 옵션
+    m_course = re.search(r"코스.?옵션.*?:\s*([^/]+)", option_str)
+    if m_course:
+        result["courseOption"] = m_course.group(1).strip()
+
+    # 5) 성인/아동/노인 (간단 예시)
+    #    "구분(성인/소아/노인): 성인(2명), 아동(1명), 노인(0명)"
+    cat_match = re.search(r"구분.*?:\s*(.+)", option_str)
+    if cat_match:
+        cat_str = cat_match.group(1).lower()
+        # ex: "성인(2명), 아동(1명), 노인(0명)"
+        adult_m = re.search(r"성인.*?\((\d+)명\)", cat_str)
+        if adult_m:
+            result["adult"] = int(adult_m.group(1))
+        child_m = re.search(r"(아동|소아).*?\((\d+)명\)", cat_str)
+        if child_m:
+            result["child"] = int(child_m.group(2))
+        old_m = re.search(r"(노인|60세).*?\((\d+)명\)", cat_str)
+        if old_m:
+            result["old"] = int(old_m.group(2))
+
+    # 6) 결제방식
+    m_pay = re.search(r"결제.?방식.*?:\s*([^/]+)", option_str)
+    if m_pay:
+        result["payMethod"] = m_pay.group(1).strip()
+
+    # 7) 생년월일 6자
+    birth_m = re.search(r"생년.?월일.*?:\s*(\d{6})", option_str)
+    if birth_m:
+        result["birthDay"] = birth_m.group(1)
+
+    # 8) 타월(수건) 개수
+    tower_m = re.search(r"(타월|수건).*?개수.*?:\s*(\d+)", option_str)
+    if tower_m:
+        result["tower"] = int(tower_m.group(2))
+
+    # 9) 항공편
+    plane_m = re.search(r"항공편.*?:\s*([^/]+)", option_str)
+    if plane_m:
+        result["airplane"] = plane_m.group(1).strip()
+
+    # 10) 샌드다운(drop)
+    drop_m = re.search(r"(샌드다운|drop).*?:\s*([^/]+)", option_str.lower())
+    if drop_m:
+        result["drop"] = drop_m.group(2).strip()
+
+    return result
