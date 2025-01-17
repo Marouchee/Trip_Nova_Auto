@@ -144,3 +144,71 @@ def save_shipping_address_to_db(connection, shipping_data):
             shipping_data["zipCode"]
         ))
     connection.commit()
+
+
+def save_product_option_details(connection, product_order_id, opt_fields: dict):
+    """
+    opt_fields는 parse_product_option() 결과 예:
+    {
+      "useDate": "2025-02-15",
+      "engName": "PETER PARKER",
+      "hotelName": "베스트 웨스턴...",
+      "courseOption": "B코스",
+      "sideOption1": "스피드보트 업그레이드",
+      "sideOption2": "북부지역 6인 이하",
+      "adult": 2,
+      "child": 1,
+      "old": 0,
+      "payMethod": "완납",
+      "birthDay": "990101",
+      "tower": 3,
+      "airplane": "OZ1234",
+      "drop": "노보텔"
+    }
+    Insert or Update into `product_option_details` table
+    """
+
+    with connection.cursor() as cursor:
+        sql = """
+        INSERT INTO product_option_details (
+          product_order_id, use_date, eng_name, hotel_name,
+          course_option, side_option1, side_option2,
+          adult, child, old,
+          pay_method, birth_day, tower, airplane, drop
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+          use_date=VALUES(use_date),
+          eng_name=VALUES(eng_name),
+          hotel_name=VALUES(hotel_name),
+          course_option=VALUES(course_option),
+          side_option1=VALUES(side_option1),
+          side_option2=VALUES(side_option2),
+          adult=VALUES(adult),
+          child=VALUES(child),
+          old=VALUES(old),
+          pay_method=VALUES(pay_method),
+          birth_day=VALUES(birth_day),
+          tower=VALUES(tower),
+          airplane=VALUES(airplane),
+          drop=VALUES(drop)
+        """
+
+        cursor.execute(sql, (
+            product_order_id,
+            opt_fields["useDate"],
+            opt_fields["engName"],
+            opt_fields["hotelName"],
+            opt_fields["courseOption"],
+            opt_fields["sideOption1"],
+            opt_fields["sideOption2"],
+            opt_fields["adult"],
+            opt_fields["child"],
+            opt_fields["old"],
+            opt_fields["payMethod"],
+            opt_fields["birthDay"],
+            opt_fields["tower"],
+            opt_fields["airplane"],
+            opt_fields["drop"]
+        ))
+    connection.commit()
