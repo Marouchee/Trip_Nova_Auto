@@ -146,69 +146,120 @@ def save_shipping_address_to_db(connection, shipping_data):
     connection.commit()
 
 
-def save_product_option_details(connection, product_order_id, opt_fields: dict):
+def save_product_option_details(connection, row_data):
     """
-    opt_fields는 parse_product_option() 결과 예:
+    row_data 예:
     {
-      "useDate": "2025-02-15",
-      "engName": "PETER PARKER",
-      "hotelName": "베스트 웨스턴...",
-      "courseOption": "B코스",
-      "sideOption1": "스피드보트 업그레이드",
-      "sideOption2": "북부지역 6인 이하",
-      "adult": 2,
-      "child": 1,
-      "old": 0,
-      "payMethod": "완납",
-      "birthDay": "990101",
-      "tower": 3,
-      "airplane": "OZ1234",
-      "drop": "노보텔"
+      "product_order_id": "2025012026399471",
+      "kor_name": "김철수",
+      "use_date": "2025-01-22",
+      "eng_name": "KIM CHULSU",
+      "adult": 4,
+      "child": 0,
+      "elder": 0,
+      "hotel_name": "코랄베이 리조트",
+      "sending": "공항샌딩",
+      "product_name": "나트랑 스노쿨링...",
+      "course_option": "B코스",
+      "side_option1": "...",
+      "side_option2": "...",
+      "pick_up_time": "07:00",
+      "pay_method": "완납",
+      "airplane": "VN1234",
+      "tel": "010-1234-5678",
+      "tower": 0,
+      "day1": "20250121",
+      "day2": "20250122",
+      "day3": "",
+      "message": "메모",
+      "initial_product_amount": 300000,
+      "final_product_amount": 250000
     }
-    Insert or Update into `product_option_details` table
+    """
+
+    sql = """
+    INSERT INTO product_option_details (
+      product_order_id,
+      kor_name,
+      use_date,
+      eng_name,
+      adult,
+      child,
+      elder,
+      hotel_name,
+      sending,
+      product_name,
+      course_option,
+      side_option1,
+      side_option2,
+      pick_up_time,
+      pay_method,
+      airplane,
+      tel,
+      tower,
+      day1,
+      day2,
+      day3,
+      message,
+      initial_product_amount,
+      final_product_amount
+    )
+    VALUES (
+      %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+      %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+      %s, %s, %s, %s
+    )
+    ON DUPLICATE KEY UPDATE
+      kor_name=VALUES(kor_name),
+      use_date=VALUES(use_date),
+      eng_name=VALUES(eng_name),
+      adult=VALUES(adult),
+      child=VALUES(child),
+      elder=VALUES(elder),
+      hotel_name=VALUES(hotel_name),
+      sending=VALUES(sending),
+      product_name=VALUES(product_name),
+      course_option=VALUES(course_option),
+      side_option1=VALUES(side_option1),
+      side_option2=VALUES(side_option2),
+      pick_up_time=VALUES(pick_up_time),
+      pay_method=VALUES(pay_method),
+      airplane=VALUES(airplane),
+      tel=VALUES(tel),
+      tower=VALUES(tower),
+      day1=VALUES(day1),
+      day2=VALUES(day2),
+      day3=VALUES(day3),
+      message=VALUES(message),
+      initial_product_amount=VALUES(initial_product_amount),
+      final_product_amount=VALUES(final_product_amount)
     """
 
     with connection.cursor() as cursor:
-        sql = """
-        INSERT INTO product_option_details (
-          product_order_id, use_date, eng_name, hotel_name,
-          course_option, side_option1, side_option2,
-          adult, child, old,
-          pay_method, birth_day, tower, airplane, drop
-        )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-          use_date=VALUES(use_date),
-          eng_name=VALUES(eng_name),
-          hotel_name=VALUES(hotel_name),
-          course_option=VALUES(course_option),
-          side_option1=VALUES(side_option1),
-          side_option2=VALUES(side_option2),
-          adult=VALUES(adult),
-          child=VALUES(child),
-          old=VALUES(old),
-          pay_method=VALUES(pay_method),
-          birth_day=VALUES(birth_day),
-          tower=VALUES(tower),
-          airplane=VALUES(airplane),
-          drop=VALUES(drop)
-        """
-
         cursor.execute(sql, (
-            product_order_id,
-            opt_fields["useDate"],
-            opt_fields["engName"],
-            opt_fields["hotelName"],
-            opt_fields["courseOption"],
-            opt_fields["sideOption1"],
-            opt_fields["sideOption2"],
-            opt_fields["adult"],
-            opt_fields["child"],
-            opt_fields["old"],
-            opt_fields["payMethod"],
-            opt_fields["birthDay"],
-            opt_fields["tower"],
-            opt_fields["airplane"],
-            opt_fields["drop"]
+            row_data.get("productOrderId",""),
+            row_data.get("name",""),
+            row_data.get("useDate", None),  # use_date -> DATETIME or str
+            row_data.get("engName",""),
+            row_data.get("adult",0),
+            row_data.get("child",0),
+            row_data.get("old",0),
+            row_data.get("hotelName",""),
+            row_data.get("sending",""),
+            row_data.get("productName",""),
+            row_data.get("courseOption",""),
+            row_data.get("sideOption1",""),
+            row_data.get("sideOption2",""),
+            row_data.get("pickUpTime",""),
+            row_data.get("payMethod",""),
+            row_data.get("airplane",""),
+            row_data.get("tel",""),
+            row_data.get("tower",0),
+            row_data.get("day1",""),
+            row_data.get("day2",""),
+            row_data.get("day3",""),
+            row_data.get("shippingMemo",""),
+            row_data.get("initialProductAmount",0),
+            row_data.get("finalProductAmount",0)
         ))
     connection.commit()
