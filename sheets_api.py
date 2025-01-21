@@ -87,7 +87,7 @@ def to_spreadsheet_rows(parsed_list):
     """
     for item in parsed_list:
         name = item.get("name", "")
-        use_date = item.get("useDate", "") # 불완전한 형식
+        use_date = item.get("useDate", "")
         adult = str(item.get("adult", 0))
         child = str(item.get("child", 0))
         old = str(item.get("old", 0))
@@ -100,6 +100,9 @@ def to_spreadsheet_rows(parsed_list):
         course_option_side_2 = item.get("sideOption2", "")
         tower = str(item.get("tower", 0))
         airplane = item.get("airplane", "")
+        shipping_memo = item.get("shippingMemo", "")
+        initial_amount = str(item.get("initialProductAmount", 0))
+        final_amount = str(item.get("finalProductAmount", 0))
 
         if product_name == "푸꾸옥 프라이빗 렌트카 기사포함 km무제한 SUV 미니벤":
             pay_method = "완납"
@@ -108,12 +111,14 @@ def to_spreadsheet_rows(parsed_list):
         eng_name = ""
         drop = ""
         pick_up_time = ""
-        use_date_1 = "" # 이용날짜 (스프레드시트 함수가 자동으로 채워주는 자리)
+        use_date1 = ""
+        use_date2 = ""
+        use_date3 = ""
 
         # 3) 한 행 구성
         row = [
             name,         # A: 한글성명
-            use_date_1,   # B: 이용날짜(함수가 자동으로 채워주는 자리임)
+            use_date,     # B: 이용날짜(불완전 형식은 코드 내부에서 자동 변환)
             eng_name,     # C: 영문성명(비워둠)
             adult,        # D: 성인 수
             child,        # E: 아동 수
@@ -129,7 +134,12 @@ def to_spreadsheet_rows(parsed_list):
             airplane,     # O: 비행기
             tel,          # P: 전화번호
             tower,        # Q: 타월 갯수
-            use_date      # R: 이용날짜(불완전한 형식)
+            use_date1,    # R
+            use_date2,    # S
+            use_date3,    # T
+            shipping_memo,# U: 배송 메모
+            initial_amount, # V: 초기 상품금액
+            final_amount    # W: 최종 상품금액
         ]
         rows.append(row)
 
