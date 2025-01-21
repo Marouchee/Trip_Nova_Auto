@@ -1,4 +1,5 @@
 import re
+import datetime
 
 def parse_orders(detail_res: dict) -> list[dict]:
     """
@@ -58,6 +59,7 @@ def parse_orders(detail_res: dict) -> list[dict]:
         # 3) 이용날짜 (예: "이용날짜(예시 : 2024-xx-xx ): 2025-02-15" 에서 뒤쪽만)
         use_date_str = po.get("productOption", "")
         use_date = extract_use_date(use_date_str)  # <-- 아래 예시 함수
+        use_date = parse_user_date(use_date)
 
         # 4) 숙소 이름 (예: "베스트 웨스턴 푸꾸옥): 뉴월드 리조트" -> "뉴월드 리조트")
         hotel_name = extract_hotel_name(use_date_str)  # <-- 아래 예시 함수
@@ -77,15 +79,25 @@ def parse_orders(detail_res: dict) -> list[dict]:
 
         # 8) 메인 옵션 파싱
         course_option_str = extract_course_option(use_date_str)
-        # 8-1) 메인 옵션이 2가지인 상품의 경우 side_option에 파싱
+        """
+        # 8-1) 메인 옵션이 2가지인 상품의 경우 side_option에 파싱 - 순서 문제로 ㅈ버그 발생, 나중에 다른 방법으로 수정해야함.
         if product_name == "[푸꾸옥 에센셜] 프라이빗 모닝투어 체크인 비엣젯, 제주항공, 진에어, 대한항공":
             side_option = extract_course_option_2(use_date_str)
+        """
 
         # 9) 비행기 편명 파싱
         airplane = extract_plane(use_date_str)
 
         # packageNumber - 채널 상품 번호? (병합용 식별자)
         productId = po.get("productId", None)  # 예: "2025010825643147"
+
+        # 배송 메모 파싱
+        shipping_memo = po.get("shippingMemo", "")
+
+        # 초기 상품 금액(할인 전)
+        initial_amount = po.get("initialProductAmount", 0)
+        # 최초 결제 금액(할인 적용 후 금액)
+        final_amount = po.get("initialPaymentAmount", 0)
 
         # ---------------------
         # (A) Side options
@@ -117,6 +129,9 @@ def parse_orders(detail_res: dict) -> list[dict]:
         else:
             # 일반 메인 상품은 quantity로 adult/child/old
             adult, child, old = parse_category_and_quantity(category_str, quantity)
+            # 렌트카 사용인원 파싱
+            if product_name == "푸꾸옥 프라이빗 렌트카 기사포함 km무제한 SUV 미니벤":
+                adult = int(extract_rent_car_quantity(use_date_str))
 
         # 10) items에 누적
         items.append({
@@ -134,12 +149,57 @@ def parse_orders(detail_res: dict) -> list[dict]:
             "old": old,
             "sideOption": side_option,
             "tower": tower,
-            "airplane": airplane
+            "airplane": airplane,
+            "shippingMemo": shipping_memo,
+            "initialProductAmount": initial_amount,
+            "finalProductAmount": final_amount
         })
+
+    # 사이드 아이템 useDate="" -> 메인 날짜 복사
+    items = _fix_side_items_date(items)
 
     # 이제 items를 orderId별로 합산
     combined = _combine_by_pkg(items)
     return combined
+
+
+def _fix_side_items_date(items: list[dict]) -> list[dict]:
+    """
+    같은 (orderId, productId) 그룹 내:
+    - 메인 아이템(성인/아동/노인>0)이 있다면, 그 아이템의 useDate를 side item에 복사
+    - side item useDate가 '' -> fill with main's date
+    - 만약 여러 메인상품(서로 다른 date)이면?
+      -> 첫 메인상품 or 나중에 구분 로직이 필요
+    """
+    # 1) 그룹화 by (orderId, productId)
+    group_map = {}
+    for it in items:
+        key = (it["orderId"], it["productId"])
+        if key not in group_map:
+            group_map[key] = []
+        group_map[key].append(it)
+
+    # 2) 각 그룹에서 main item의 useDate를 찾는다
+    for key, group in group_map.items():
+        # find if there's any main item with useDate != ""
+        # (adult+child+old>0) => main
+        # 만약 여러개면? 본인 로직 결정(첫것 사용 or ...)
+        main_date = None
+        for it in group:
+            if (it["adult"] + it["child"] + it["old"])>0 and it["useDate"]:
+                main_date = it["useDate"]
+                break
+
+        # 3) side items => useDate="" -> fill with main_date if exist
+        if main_date:
+            for it in group:
+                if not it["useDate"]:
+                    it["useDate"] = main_date
+
+    # 4) flatten
+    #   group_map 내부에서 수정하였으므로, items도 이미 반영됨
+    #   그냥 return items
+    return items
 
 
 def _combine_by_pkg(items: list[dict]) -> list[dict]:
@@ -158,7 +218,8 @@ def _combine_by_pkg(items: list[dict]) -> list[dict]:
         # group key
         oid = it["orderId"]
         pkg = it["productId"]
-        key = (oid, pkg)
+        dt = it["useDate"]
+        key = (oid, pkg, dt)
         if key not in data_by_key:
             # 초기화
             data_by_key[key] = {
@@ -166,7 +227,7 @@ def _combine_by_pkg(items: list[dict]) -> list[dict]:
                 "productId": pkg,
                 "name": it["name"],
                 "tel": it["tel"],
-                "useDate": it["useDate"],
+                "useDate": dt,
                 "hotelName": it["hotelName"],
                 "productName": it["productName"],
                 "courseOption": it["courseOption"],
@@ -176,7 +237,10 @@ def _combine_by_pkg(items: list[dict]) -> list[dict]:
                 "old": it["old"],
                 "tower": it["tower"],
                 "airplane": it["airplane"],
-                "sideOption1": "",
+                "shippingMemo": it["shippingMemo"],
+                "initialProductAmount": it["initialProductAmount"],
+                "finalProductAmount": it["finalProductAmount"],
+                "sideOption1": it["sideOption"],
                 "sideOption2": "",
             }
             # productName: 만약 메인상품이 있으면 그걸로. 추가옵션이면 ""
@@ -193,6 +257,8 @@ def _combine_by_pkg(items: list[dict]) -> list[dict]:
             data_by_key[key]["child"] += it["child"]
             data_by_key[key]["old"] += it["old"]
             data_by_key[key]["tower"] += it["tower"]  # 타월 수량 합산
+            data_by_key[key]["initialProductAmount"] += it["initialProductAmount"]
+            data_by_key[key]["finalProductAmount"] += it["finalProductAmount"]
 
             # 메인상품명은 adult/child/old>0인 항목에서 가져온다(또는 이미 있으면 덮어쓰지 않음)
             if it["adult"] > 0 or it["child"] > 0 or it["old"] > 0:
@@ -281,6 +347,16 @@ def extract_category_str(option_str: str) -> str:
         return match.group(1).strip()
     return ""
 
+def extract_rent_car_quantity(option_str: str) -> str:
+    """
+    예: "사용 인원: 4"
+    -> "4"
+    """
+    match = re.search(r"사용.?인원.*?:\s*([^/]+)", option_str)
+    if match:
+        return match.group(1).strip()
+    return ""
+
 def extract_course_option(option_str: str) -> str:
     """
     예: "코스 옵션 (기본/빈원더스 추가): B코스 (사파리+빈원더스+그랜드월드)"
@@ -308,7 +384,7 @@ def extract_course_option_2(option_str: str) -> str:
         -> "B코스 (사파리+빈원더스+그랜드월드)"
     (정규식 or split)
     """
-    match = re.search(r"마사지.?시간.?선택.*?:\s*([^/]+)", option_str)
+    match = re.search(r"마사지 시간 선택:\s*([^/]+)", option_str)
     if match:
         return match.group(1).strip()
     return ""
@@ -349,6 +425,130 @@ def parse_category_and_quantity(category_str: str, quantity: int) -> tuple[int, 
     else:
         # 기본적으로 성인으로 처리
         return (quantity, 0, 0)
+
+
+def parse_user_date(date_str: str) -> str:
+    """
+    사용자 입력 날짜를 다양하게 수용해 'YYYY-MM-DD'로 통일하는 함수.
+    - "250114" => "2025-01-14"
+    - "2025.01.14", "25.01.14" => "2025-01-14"
+    - "20250114" => "2025-01-14"
+    - "25-1-14" => "2025-01-14"
+    - "25114" => "2025-01-14"
+    - "23.5.7" => "2023-05-07"
+    - 그 외 패턴도 최대한 처리
+    - 실패 시 "" 반환
+    """
+
+    if not date_str or not date_str.strip():
+        return ""
+
+    s = date_str.strip()
+
+    # 1) 구두점/하이픈/슬래시/공백 등 제거
+    #    예: "25.1.14" -> "25114", "23.5.7" -> "2357" 또는 "23507" (아래서 처리)
+    s_clean = re.sub(r"[.\-/\s]", "", s)  # "25.01.14" -> "250114"
+
+    # 2) 길이별 처리
+
+    # (A) 길이가 8 => yyyy mm dd
+    if len(s_clean) == 8:
+        yyyy = s_clean[0:4]
+        mm = s_clean[4:6]
+        dd = s_clean[6:8]
+        try:
+            dt = datetime.date(int(yyyy), int(mm), int(dd))
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+    # (B) 길이가 6 => yy mm dd
+    if len(s_clean) == 6:
+        yy = s_clean[0:2]
+        mm = s_clean[2:4]
+        dd = s_clean[4:6]
+        try:
+            yyyy = _two_digit_year_to_full(yy)
+            dt = datetime.date(yyyy, int(mm), int(dd))
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+    # (C) 길이가 5 => "yy m dd" or "yy mm d" 등의 변형 가정
+    if len(s_clean) == 5:
+        # 예: "25114" => "25 1 14" => 2025-01-14
+        # 가능성 1) yy m dd => s_clean[0:2], s_clean[2:3], s_clean[3:5]
+        # 가능성 2) yy mm d => s_clean[0:2], s_clean[2:4], s_clean[4:5]
+
+        # 우선 시도1: yy m dd
+        yy = s_clean[0:2]
+        m = s_clean[2:3]
+        dd = s_clean[3:5]
+        try:
+            yyyy = _two_digit_year_to_full(yy)
+            dt = datetime.date(yyyy, int(m), int(dd))
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+        # 시도2: yy mm d
+        yy = s_clean[0:2]
+        mm = s_clean[2:4]
+        d = s_clean[4:5]
+        try:
+            yyyy = _two_digit_year_to_full(yy)
+            dt = datetime.date(yyyy, int(mm), int(d))
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+    # (D) 길이가 4 => "y m d"?? (예: "2357" -> 23 5 7 => 2023-05-07)
+    #     매우 모호하므로 필요하면 여기도 처리
+    if len(s_clean) == 4:
+        # ex: "2357" => yy=23, m=5, d=7
+        #   -> 2023-05-07
+        #   But ambiguous if user meant 02-35-07?
+        # 여기서는 간단히 yy, m, d
+        yy = s_clean[0:2]
+        m = s_clean[2:3]
+        d = s_clean[3:4]
+        try:
+            yyyy = _two_digit_year_to_full(yy)
+            dt = datetime.date(yyyy, int(m), int(d))
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+    # (E) strptime 여러 패턴 시도
+    #   "25.1.14" -> ...
+    possible_patterns = [
+        "%Y.%m.%d",
+        "%Y-%m-%d",
+        "%Y/%m/%d",
+        "%y.%m.%d",
+        "%y-%m-%d",
+        "%y/%m/%d",
+    ]
+    for pat in possible_patterns:
+        try:
+            dt = datetime.datetime.strptime(s, pat).date()
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+    # 실패
+    return ""
+
+
+def _two_digit_year_to_full(yy_str: str) -> int:
+    """
+    2자리 연도 -> 4자리 연도 변환 규칙
+    예:
+      00~69 => 2000~2069
+      70~99 => 1970~1999
+    """
+    yy = int(yy_str)
+    return 2000 + yy
 
 
 def parse_product_option(option_str: str) -> dict:
