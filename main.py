@@ -146,12 +146,8 @@ if __name__ == "__main__":
         }
         save_shipping_address_to_db(connection, shipping_data)
 
-        product_order_id = po.get("productOrderId", "")
-        # (A) parse productOption
-        option_str = po.get("productOption", "")
-        opt_fields = parse_product_option(option_str)
-
-        # (B) DB에 insert
-        save_product_option_details(connection, product_order_id, opt_fields)
+    # 5) for each item in dict => insert to DB
+    for data in parsed_list:
+        save_product_option_details(connection, data)
 
     connection.close()
