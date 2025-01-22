@@ -56,19 +56,18 @@ def save_product_order_to_db(connection, product_order_data):
     with connection.cursor() as cursor:
         sql = """
         INSERT INTO product_orders (
-          product_order_id, order_id, product_name, product_option,
+          product_order_id, order_id, product_name,
           quantity, free_gift, product_class, option_code, option_price,
           unit_price, initial_payment_amount, remain_payment_amount,
           initial_product_amount, remain_product_amount, merchant_channel_id,
           seller_product_code
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
           order_id=VALUES(order_id),
           product_name=VALUES(product_name),
-          product_option=VALUES(product_option),
           quantity=VALUES(quantity),
-          free_gift=VALUES(free_gift),
+          free_gift=VALUES(free_gift), 
           product_class=VALUES(product_class),
           option_code=VALUES(option_code),
           option_price=VALUES(option_price),
@@ -84,7 +83,6 @@ def save_product_order_to_db(connection, product_order_data):
             product_order_data["productOrderId"],
             product_order_data["orderId"],
             product_order_data["productName"],
-            product_order_data["productOption"],
             product_order_data["quantity"],
             product_order_data["freeGift"],
             product_order_data["productClass"],
@@ -202,12 +200,13 @@ def save_product_option_details(connection, row_data):
       day3,
       message,
       initial_product_amount,
-      final_product_amount
+      final_product_amount,
+      statement
     )
     VALUES (
       %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
       %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-      %s, %s, %s, %s
+      %s, %s, %s, %s, %s
     )
     ON DUPLICATE KEY UPDATE
       kor_name=VALUES(kor_name),
@@ -232,7 +231,8 @@ def save_product_option_details(connection, row_data):
       day3=VALUES(day3),
       message=VALUES(message),
       initial_product_amount=VALUES(initial_product_amount),
-      final_product_amount=VALUES(final_product_amount)
+      final_product_amount=VALUES(final_product_amount),
+      statement=VALUES(statement)
     """
 
     with connection.cursor() as cursor:
@@ -260,6 +260,7 @@ def save_product_option_details(connection, row_data):
             row_data.get("day3",""),
             row_data.get("shippingMemo",""),
             row_data.get("initialProductAmount",0),
-            row_data.get("finalProductAmount",0)
+            row_data.get("finalProductAmount",0),
+            "PAYED"
         ))
     connection.commit()
