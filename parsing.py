@@ -450,6 +450,19 @@ def parse_user_date(date_str: str) -> str:
 
     s = date_str.strip()
 
+    # 한글 패턴: "YYYY년 M월 D일"
+    # ex) "2025년 1월 29일", "2025년 01월 29일" 등
+    match_ko = re.match(r"^\s*([0-9]{4})\s*년\s*([0-9]{1,2})\s*월\s*([0-9]{1,2})\s*일\s*$", s)
+    if match_ko:
+        yyyy = int(match_ko.group(1))
+        mm = int(match_ko.group(2))
+        dd = int(match_ko.group(3))
+        try:
+            dt = datetime.date(yyyy, mm, dd)
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
     # 1) 구두점/하이픈/슬래시/공백 등 제거
     #    예: "25.1.14" -> "25114", "23.5.7" -> "2357" 또는 "23507" (아래서 처리)
     s_clean = re.sub(r"[.\-/\s]", "", s)  # "25.01.14" -> "250114"
@@ -542,7 +555,7 @@ def parse_user_date(date_str: str) -> str:
             pass
 
     # 실패
-    return ""
+    return date_str
 
 
 def _two_digit_year_to_full(yy_str: str) -> int:
