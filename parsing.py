@@ -357,7 +357,7 @@ def extract_rent_car_quantity(option_str: str) -> str:
     예: "사용 인원: 4"
     -> "4"
     """
-    match = re.search(r"사용.?인원.*?:\s*([^/]+)", option_str)
+    match = re.search(r"사용.?인원.*?:\s*(\d+)([^/]+)", option_str)
     if match:
         return match.group(1).strip()
     return ""
@@ -568,3 +568,4 @@ def _two_digit_year_to_full(yy_str: str) -> int:
     yy = int(yy_str)
     return 2000 + yy
 
+v
