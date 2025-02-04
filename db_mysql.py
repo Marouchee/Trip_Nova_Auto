@@ -195,7 +195,7 @@ def save_product_option_details(connection, row_data):
       airplane,
       tel,
       tower,
-      day1,
+      side_option3,
       day2,
       day3,
       message,
@@ -226,7 +226,7 @@ def save_product_option_details(connection, row_data):
       airplane=VALUES(airplane),
       tel=VALUES(tel),
       tower=VALUES(tower),
-      day1=VALUES(day1),
+      side_option3=VALUES(side_option3),
       day2=VALUES(day2),
       day3=VALUES(day3),
       message=VALUES(message),
@@ -235,11 +235,16 @@ def save_product_option_details(connection, row_data):
       statement=VALUES(statement)
     """
 
+    order_date_str = row_data.get("useDate", None)
+    # 1) 만약 값이 빈 문자열이면 None 으로 교체
+    if not order_date_str:
+        order_date_str = None
+
     with connection.cursor() as cursor:
         cursor.execute(sql, (
             row_data.get("productOrderId",""),
             row_data.get("name",""),
-            row_data.get("useDate", None),  # use_date -> DATETIME or str
+            order_date_str,  # use_date -> DATETIME or str
             row_data.get("engName",""),
             row_data.get("adult",0),
             row_data.get("child",0),
@@ -255,7 +260,7 @@ def save_product_option_details(connection, row_data):
             row_data.get("airplane",""),
             row_data.get("tel",""),
             row_data.get("tower",0),
-            row_data.get("day1",""),
+            row_data.get("sideOption3",""),
             row_data.get("day2",""),
             row_data.get("day3",""),
             row_data.get("shippingMemo",""),
