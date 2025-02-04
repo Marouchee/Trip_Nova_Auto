@@ -110,7 +110,8 @@ def parse_orders(detail_res: dict) -> list[dict]:
         is_side = False
         # 예시판별: 만약 productName에 "스피드보트 업그레이드" or "북부지역" 텍스트 포함되어 있으면 side_option = productName
         if any(x in product_name for x in ["스피드보트 업그레이드", "북부지역", "잔금 30USD", "잔금 20USD",
-                                           "북부(완납)", "남부(완납)", "중부(완납)", "소나시(무료)", "북부(잔금)", "남부(잔금)", "중부(잔금)" ]):
+                                           "북부(완납)", "남부(완납)", "중부(완납)", "소나시(무료)", "북부(잔금)", "남부(잔금)", "중부(잔금)",
+                                           "선예약 후 개별결제"]):
             is_side = True
             side_option = product_name  # sideOption 필드에 저장
         # 혹은 productOption 안에서도 판별 가능
@@ -247,6 +248,7 @@ def _combine_by_pkg(items: list[dict]) -> list[dict]:
                 "finalProductAmount": it["finalProductAmount"],
                 "sideOption1": it["sideOption"],
                 "sideOption2": "",
+                "sideOption3": "",
             }
             # productName: 만약 메인상품이 있으면 그걸로. 추가옵션이면 ""
             if it["adult"] > 0 or it["child"] > 0 or it["old"] > 0:
@@ -292,7 +294,7 @@ def _combine_by_pkg(items: list[dict]) -> list[dict]:
                         data_by_key[key]["sideOption2"] = it["sideOption"]
                     else:
                         # 예: "북부지역 ... / 스피드보트 업그레이드"
-                        data_by_key[key]["sideOption2"] += " / " + it["sideOption"]
+                        data_by_key[key]["sideOption3"] = it["sideOption"]
 
     return list(data_by_key.values())
 
@@ -303,6 +305,14 @@ def extract_use_date(option_str: str) -> str:
          -> "2025-02-15"
     """
     match = re.search(r"이용.?날짜.*?:\s*([^/]+)", option_str)
+    if match:
+        parts = match.group(1).split("):")
+        if len(parts) > 1:
+            # parts[1]은 " 뉴월드 리조트"처럼 앞에 공백이 있을 수 있으니 strip()
+            return parts[1].strip()
+        else:
+            return match.group(1).strip()
+    match = re.search(r"이용.?예정일.*?:\s*([^/]+)", option_str)
     if match:
         parts = match.group(1).split("):")
         if len(parts) > 1:
@@ -546,6 +556,7 @@ def parse_user_date(date_str: str) -> str:
         "%y.%m.%d",
         "%y-%m-%d",
         "%y/%m/%d",
+        "%y_%m_%d",
     ]
     for pat in possible_patterns:
         try:
@@ -555,7 +566,7 @@ def parse_user_date(date_str: str) -> str:
             pass
 
     # 실패
-    return date_str
+    return ""
 
 
 def _two_digit_year_to_full(yy_str: str) -> int:
@@ -568,4 +579,3 @@ def _two_digit_year_to_full(yy_str: str) -> int:
     yy = int(yy_str)
     return 2000 + yy
 
-v
