@@ -81,7 +81,9 @@ def get_last_changed_list(token):
 
     params = {
         "lastChangedFrom": ios_format,
-        "lastChangedType": "PAYED"
+        "lastChangedType": "PAYED",
+        #"lastChangedType": "DISPATCHED",
+        #"lastChangedType": "PURCHASE_DECIDED",
     }
 
     res = requests.get(url, headers=headers, params=params)
