@@ -243,7 +243,7 @@ def save_product_option_details(connection, row_data):
     with connection.cursor() as cursor:
         cursor.execute(sql, (
             row_data.get("productOrderId",""),
-            row_data.get("name",""),
+            row_data.get("korName",""),
             order_date_str,  # use_date -> DATETIME or str
             row_data.get("engName",""),
             row_data.get("adult",0),
