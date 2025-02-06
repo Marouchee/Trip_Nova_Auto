@@ -53,13 +53,16 @@ def parse_orders(detail_res: dict) -> list[dict]:
         order_id = order.get("orderId", "")
 
         # 2) 한글성명, 전화번호
-        name = shipping.get("name", "")
+        kor_name = shipping.get("name", "")
         tel = shipping.get("tel1", "")
 
         # 3) 이용날짜 (예: "이용날짜(예시 : 2024-xx-xx ): 2025-02-15" 에서 뒤쪽만)
         use_date_str = po.get("productOption", "")
         use_date = extract_use_date(use_date_str)  # <-- 아래 예시 함수
         use_date = parse_user_date(use_date)
+
+        # 영문명 파싱
+        eng_name = extract_eng_name(use_date_str)
 
         # 4) 숙소 이름 (예: "베스트 웨스턴 푸꾸옥): 뉴월드 리조트" -> "뉴월드 리조트")
         hotel_name = extract_hotel_name(use_date_str)  # <-- 아래 예시 함수
@@ -142,7 +145,8 @@ def parse_orders(detail_res: dict) -> list[dict]:
             "orderId": order_id,
             "productOrderId": product_order_id,
             "productId": productId,
-            "name": name,
+            "korName": kor_name,
+            "engName": eng_name,
             "tel": tel,
             "useDate": use_date,
             "hotelName": hotel_name,
@@ -231,7 +235,8 @@ def _combine_by_pkg(items: list[dict]) -> list[dict]:
                 "orderId": oid,
                 "productId": pkg,
                 "productOrderId": it["productOrderId"],
-                "name": it["name"],
+                "korName": it["korName"],
+                "engName": it["engName"],
                 "tel": it["tel"],
                 "useDate": dt,
                 "hotelName": it["hotelName"],
@@ -320,6 +325,20 @@ def extract_use_date(option_str: str) -> str:
             return parts[1].strip()
         else:
             return match.group(1).strip()
+    return ""
+
+def extract_eng_name(option_str: str) -> str:
+    """
+        예: "예약자 영문명(예시: Kim Min Soo): Kim Min Soo"
+          -> "Kim Min Soo"
+        정규식 or split으로 "):" 뒤쪽
+    """
+    pattern = r"\)\s*:\s*(.+)$"
+    match = re.search(r"예약자.?영문명.*?:\s*([^/]+)", option_str)
+    if match:
+        match_1 = re.search(pattern, match.group(1))
+        if match_1:
+            return match_1.group(1).strip()
     return ""
 
 def extract_hotel_name(option_str: str) -> str:
