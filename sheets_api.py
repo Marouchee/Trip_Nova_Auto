@@ -86,7 +86,8 @@ def to_spreadsheet_rows(parsed_list):
     rows.append(header)
     """
     for item in parsed_list:
-        name = item.get("name", "")
+        kor_name = item.get("korName", "")
+        eng_name = item.get("engName", "")
         use_date = item.get("useDate", "")
         adult = str(item.get("adult", 0))
         child = str(item.get("child", 0))
@@ -109,7 +110,6 @@ def to_spreadsheet_rows(parsed_list):
             pay_method = "완납"
 
         # 2) 영문명등 쓰지않는 칸들 비워두기 / 추후에 구현 예정
-        eng_name = ""
         drop = ""
         pick_up_time = ""
         use_date1 = ""
@@ -118,7 +118,7 @@ def to_spreadsheet_rows(parsed_list):
 
         # 3) 한 행 구성
         row = [
-            name,         # A: 한글성명
+            kor_name,         # A: 한글성명
             use_date,     # B: 이용날짜(불완전 형식은 코드 내부에서 자동 변환)
             eng_name,     # C: 영문성명(비워둠)
             adult,        # D: 성인 수
