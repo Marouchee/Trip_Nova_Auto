@@ -114,7 +114,7 @@ def parse_orders(detail_res: dict) -> list[dict]:
         # 예시판별: 만약 productName에 "스피드보트 업그레이드" or "북부지역" 텍스트 포함되어 있으면 side_option = productName
         if any(x in product_name for x in ["스피드보트 업그레이드", "북부지역", "잔금 30USD", "잔금 20USD",
                                            "북부(완납)", "남부(완납)", "중부(완납)", "소나시(무료)", "북부(잔금)", "남부(잔금)", "중부(잔금)",
-                                           "선예약 후 개별결제"]):
+                                           "선예약 후 개별결제", "1인 추가"]):
             is_side = True
             side_option = product_name  # sideOption 필드에 저장
         # 혹은 productOption 안에서도 판별 가능
@@ -294,12 +294,15 @@ def _combine_by_pkg(items: list[dict]) -> list[dict]:
                 if not data_by_key[key]["sideOption1"]:
                     data_by_key[key]["sideOption1"] = it["sideOption"]
                 else:
-                    # sideOption2가 비어있으면 넣고, 이미 있으면 병합(슬래시?)
+                    # sideOption3가 비어있으면 넣고, 이미 있으면 병합(슬래시?)
                     if not data_by_key[key]["sideOption2"]:
                         data_by_key[key]["sideOption2"] = it["sideOption"]
                     else:
-                        # 예: "북부지역 ... / 스피드보트 업그레이드"
-                        data_by_key[key]["sideOption3"] = it["sideOption"]
+                        if not data_by_key[key]["sideOption3"]:
+                            data_by_key[key]["sideOption3"] = it["sideOption"]
+                        else:
+                            # 예: "북부지역 ... / 스피드보트 업그레이드"
+                            data_by_key[key]["sideOption3"] = data_by_key[key]["sideOption3"] + " / " + it["sideOption"]
 
     return list(data_by_key.values())
 
