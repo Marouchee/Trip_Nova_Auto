@@ -100,6 +100,7 @@ def to_spreadsheet_rows(parsed_list):
         course_option_side_1 = item.get("sideOption1", "")
         course_option_side_2 = item.get("sideOption2", "")
         course_option_side_3 = item.get("sideOption3", "")
+        course_option_side_4 = item.get("sideOption4", "")
         tower = str(item.get("tower", 0))
         airplane = item.get("airplane", "")
         shipping_memo = item.get("shippingMemo", "")
@@ -141,7 +142,8 @@ def to_spreadsheet_rows(parsed_list):
             shipping_memo,# U: 배송 메모
             initial_amount, # V: 초기 상품금액
             final_amount,    # W: 최종 상품금액
-            course_option_side_3 # X: 코스 사이드 옵션 3
+            course_option_side_3, # X: 코스 사이드 옵션 3
+            course_option_side_4, # Y: 코스 사이드 옵션 4
         ]
         rows.append(row)
 
