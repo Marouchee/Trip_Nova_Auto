@@ -254,6 +254,7 @@ def _combine_by_pkg(items: list[dict]) -> list[dict]:
                 "sideOption1": it["sideOption"],
                 "sideOption2": "",
                 "sideOption3": "",
+                "sideOption4": "",
             }
             # productName: 만약 메인상품이 있으면 그걸로. 추가옵션이면 ""
             if it["adult"] > 0 or it["child"] > 0 or it["old"] > 0:
@@ -302,7 +303,7 @@ def _combine_by_pkg(items: list[dict]) -> list[dict]:
                             data_by_key[key]["sideOption3"] = it["sideOption"]
                         else:
                             # 예: "북부지역 ... / 스피드보트 업그레이드"
-                            data_by_key[key]["sideOption3"] = data_by_key[key]["sideOption3"] + " / " + it["sideOption"]
+                            data_by_key[key]["sideOption4"] = it["sideOption"]
 
     return list(data_by_key.values())
 
