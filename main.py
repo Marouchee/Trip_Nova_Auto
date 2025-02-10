@@ -150,4 +150,19 @@ if __name__ == "__main__":
     for data in parsed_list:
         save_product_option_details(connection, data)
 
+    # 1) API로 취소/반품 목록 가져오기
+    canceled_list = get_canceled_orders(token)
+
+    # 2) DB 업데이트
+    with connection.cursor() as cursor:
+        sql = "UPDATE product_option_details SET statement='CANCELED' WHERE product_order_id=%s"
+        count = 0
+        for item in canceled_list:
+            product_order_id = item.get("productOrderId")
+            if product_order_id:
+                cursor.execute(sql, (product_order_id,))
+                count += 1
+        connection.commit()
+
     connection.close()
+    print(count)
