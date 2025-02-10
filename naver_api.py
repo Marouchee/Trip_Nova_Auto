@@ -126,3 +126,33 @@ def get_product_orders_detail(token: str, product_order_ids: list[str]) -> dict:
     response.raise_for_status()  # 4xx, 5xx 시 예외
 
     return response.json()
+
+def get_canceled_orders(token):
+    """
+    예시: /last-changed-statuses API를 통해
+    DISPATCHED 상태로 변경된 productOrderId 목록을 가져온다고 가정
+    """
+    url = "https://api.commerce.naver.com/external/v1/pay-order/seller/product-orders/last-changed-statuses"
+    headers = {"Authorization": token}
+
+    # 3) 조회 시작 시점 설정 (기본 3시간 전)
+    now = datetime.now()
+    before_date = now - timedelta(days=1)
+    #after_date = now
+    # 필요하다면 minutes=10, ,hours=3, days=1 등 호출부에서 조정
+
+    # 4) ISO8601 포맷(UTC/로컬) 변환
+    # 주의: astimezone() 호출 시 어떤 타임존인지 문서나 실제 응답을 보고 결정
+    ios_format = before_date.astimezone().isoformat()
+    #ios_format_2 = after_date.astimezone().isoformat()
+    params = {
+        "lastChangedFrom": ios_format,
+        #"lastChangedTo": ios_format_2,
+        "lastChangedType": "CLAIM_COMPLETED",
+    }
+
+    res = requests.get(url, headers=headers, params=params)
+    res.raise_for_status()
+    data = res.json()
+    # data["data"]["lastChangeStatuses"] 배열
+    return data.get("data", {}).get("lastChangeStatuses", [])
