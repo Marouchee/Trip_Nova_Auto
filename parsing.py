@@ -72,6 +72,8 @@ def parse_orders(detail_res: dict) -> list[dict]:
 
         # 6) 결제방식 (예: "결제방식 (잔금/완납): 완납") -> 정규식 or parse_option
         pay_method = extract_pay_method(use_date_str)
+        if product_name == "푸꾸옥 프라이빗 렌트카 기사포함 km무제한 SUV 미니벤":
+            pay_method = "완납"
 
         # 7) 성인/아동/노인 파싱:
         #    예: "성인 (키 140cm 이상)(2명)" -> adult=2, child=0, old=0
