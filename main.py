@@ -131,21 +131,6 @@ if __name__ == "__main__":
         }
         save_product_order_to_db(connection, product_order_data)
 
-        # (C) shipping_address 테이블 저장
-        shipping_data = {
-            "productOrderId": po.get("productOrderId", ""),
-            "name": shipping.get("name", ""),
-            "baseAddress": shipping.get("baseAddress", ""),
-            "detailedAddress": shipping.get("detailedAddress", ""),
-            "tel1": shipping.get("tel1", ""),
-            "tel2": shipping.get("tel2", ""),
-            "city": shipping.get("city", ""),
-            "state": shipping.get("state", ""),
-            "country": shipping.get("country", ""),
-            "zipCode": shipping.get("zipCode", "")
-        }
-        save_shipping_address_to_db(connection, shipping_data)
-
     # 5) for each item in dict => insert to DB
     for data in parsed_list:
         save_product_option_details(connection, data)
