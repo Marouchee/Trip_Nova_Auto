@@ -99,51 +99,6 @@ def save_product_order_to_db(connection, product_order_data):
     connection.commit()
 
 
-def save_shipping_address_to_db(connection, shipping_data):
-    """
-    shipping_data:
-      {
-        "productOrderId": str,
-        "name": str,
-        "baseAddress": str,
-        "detailedAddress": str,
-        "tel1": str,
-        ...
-      }
-    """
-    with connection.cursor() as cursor:
-        sql = """
-        INSERT INTO shipping_address (
-          product_order_id, name, base_address, detailed_address,
-          tel1, tel2, city, state, country, zip_code
-        )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-          name=VALUES(name),
-          base_address=VALUES(base_address),
-          detailed_address=VALUES(detailed_address),
-          tel1=VALUES(tel1),
-          tel2=VALUES(tel2),
-          city=VALUES(city),
-          state=VALUES(state),
-          country=VALUES(country),
-          zip_code=VALUES(zip_code)
-        """
-        cursor.execute(sql, (
-            shipping_data["productOrderId"],
-            shipping_data["name"],
-            shipping_data["baseAddress"],
-            shipping_data["detailedAddress"],
-            shipping_data["tel1"],
-            shipping_data["tel2"],
-            shipping_data["city"],
-            shipping_data["state"],
-            shipping_data["country"],
-            shipping_data["zipCode"]
-        ))
-    connection.commit()
-
-
 def save_product_option_details(connection, row_data):
     """
     row_data 예:
