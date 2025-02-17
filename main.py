@@ -13,6 +13,7 @@ if __name__ == "__main__":
 
     # 1) 상태 변경 API로 상품주문번호 목록 가져오기
     changed_items = get_last_changed_list(token)
+    changed_items2 = get_last_changed_list2(token)
     # changed_items 예시:
     # [
     #   {"productOrderId": "2025010464018221", "orderId": "...", ...},
@@ -20,7 +21,7 @@ if __name__ == "__main__":
     #   ...
     # ]
 
-    product_order_ids = [item["productOrderId"] for item in changed_items]
+    product_order_ids = [item["productOrderId"] for item in changed_items] + [item["productOrderId"] for item in changed_items2]
     if not product_order_ids:
         print("새로운 상태변경 주문 없음")
         exit(1)
